@@ -142,5 +142,97 @@ void lru(char* tracefile, int nframes, char* type) {
 }
 
 void segmentedfifo(char* tracefile, int nframes, int percent, char* type){
+    
+    deque<memaccess> fifo;
+    //insert data structure for LRU
 
+    int events = 0;
+    int reads = 0;
+    int writes = 0;
+    bool debug = (strcmp(type,"debug") == 0);
+    int s_nframes = (nframes*percent)/100; //secondary size for LRU
+    int p_nframes = nframes - s_nframes; //primary size for FIFO
+
+    //open file
+    FILE* file;
+    file = fopen(tracefile,"r");
+    if(file == NULL) {
+        cout << "File not found!\n";
+    }
+    
+    memaccess temp;
+    //read trace
+    while(fscanf(file,"%x %c",&temp.addr,&temp.rw) !=EOF) {
+        temp.addr /= 4096;
+        events++;
+
+        //if debug mode print everytime something is read in
+        if(debug) {
+            cout << "Memory access #" << events << " is " << temp.addr << temp.rw << ". " << endl;
+        }
+
+        //VMS is FIFO
+        if(s_nframes == 0) {
+            bool go_next = false;
+            //search and update if new memory access exists in FIFO
+            for(int i = 0; i<fifo.size(); i++) {
+                //memory access already exists in page table
+                if(fifo[i].addr == temp.addr) {
+                    go_next = true;
+                    //if same memory access now needs to do a write operation instead of read
+                    if(fifo[i].rw == 'R' && temp.rw == 'W') {
+                        fifo[i].rw = 'W';
+                    }
+                    break;
+                }
+            }
+            //search and update if memory access exists in LRU
+            //insert LRU check
+
+            //memory access alredy in page table next read
+            if(go_next)
+                continue;
+            else {
+                //if page table has space available
+                if(fifo.size() < p_nframes) {
+                    fifo.push_back(temp);
+                    reads++;
+                }
+                //if page table full
+                else {
+                    //if popped memaccess is dirty
+                    if(fifo.front().rw == 'W') {
+                        writes++;
+                    } 
+                    fifo.pop_front();
+                    fifo.push_back(temp);
+                    reads++;
+                }
+            }
+        }
+        //VMS is LRU
+        else if(p_nframes == 0) {
+            //copy and paste LRU code but using the s_nframes variable as the size of LRU data structure
+        }
+        //default VMS
+        else {
+            //check if memory access is in FIFO
+            //if in FIFO, update W bit if needed
+
+            //check if memory access is in LRU
+            //if in LRU, update W bit if needed then push into FIFO and push bottom in FIFO into LRU
+
+            //if FIFO empty, push into FIFO. Update read
+            //if FIFO full, push into LRU. Update read
+
+            //if FIFO full and LRU full, push into FIFO, pop bottom and evict into LRU, eject oldest LRU (increment write if W). 
+        }
+
+    }
+
+    fclose(file);
+    cout << "total memory frames: " << nframes << endl;
+    cout << "events in trace: " << events << endl;
+    cout << "total disk reads: " << reads << endl;
+    cout << "total disk writes: " << writes << endl;
 }
