@@ -5,6 +5,7 @@
 #include<fstream>
 #include<cstring>
 #include<deque>
+#include<vector>
 
 using namespace std;
 
@@ -138,13 +139,82 @@ void fifo(char* tracefile, int nframes, char* type) {
 }
 
 void lru(char* tracefile, int nframes, char* type) {
+    vector<memaccess> lru;
+    int events = 0;
+    int reads = 0;
+    int writes = 0;
+    bool debug = (strcmp(type,"debug") == 0);
 
+    //open file
+    FILE* file;
+    file = fopen(tracefile,"r");
+    if(file == NULL) {
+        cout << "File not found!\n";
+    }
+    
+    memaccess temp;
+    //read trace
+    while(fscanf(file,"%x %c",&temp.addr,&temp.rw) !=EOF) {
+        temp.addr /= 4096;
+        events++;
+        
+        //if debug mode print everytime something is read in
+        if(debug) {
+            cout << "Memory access #" << events << " is " << temp.addr << temp.rw << ". " << endl;
+        }
+
+        bool go_next = false;
+        //search and update if new memory access exists in LRU
+        for(int i = 0; i<lru.size(); i++) {
+            //memory access already exists in page table
+            if(lru[i].addr == temp.addr) {
+                go_next = true;
+                //begin to place found page to back of page table.
+                memaccess temp2=lru[i];
+                //If read operation is a write, then update it upon placing it to the back.
+                if(lru[i].rw == 'R' && temp.rw == 'W') {
+                    temp2.rw='W';
+                }
+                lru.erase(lru.begin()+i);
+                lru.push_back(temp2);
+                break;
+            }
+        }
+
+        //memory access alredy in page table next read
+        if(go_next)
+            continue;
+        else {
+            //if page table has space available
+            if(lru.size() < nframes) {
+                lru.push_back(temp);
+                reads++;
+            }
+            //if page table full
+            else {
+                //if popped memaccess is dirty
+                if(lru.front().rw == 'W') {
+                    writes++;
+                } 
+                lru.erase(lru.begin());
+                lru.push_back(temp);
+                reads++;
+            }
+        }
+
+    }
+    
+    fclose(file);
+    cout << "total memory frames: " << nframes << endl;
+    cout << "events in trace: " << events << endl;
+    cout << "total disk reads: " << reads << endl;
+    cout << "total disk writes: " << writes << endl;
 }
 
 void segmentedfifo(char* tracefile, int nframes, int percent, char* type){
     
     deque<memaccess> fifo;
-    //insert data structure for LRU
+    vector<memaccess> lru;
 
     int events = 0;
     int reads = 0;
@@ -188,7 +258,21 @@ void segmentedfifo(char* tracefile, int nframes, int percent, char* type){
             }
             //search and update if memory access exists in LRU
             //insert LRU check
-
+            for(int i = 0; i<lru.size(); i++) {
+            //memory access already exists in page table
+            if(lru[i].addr == temp.addr) {
+                go_next = true;
+                //begin to place found page to back of page table.
+                memaccess temp2=lru[i];
+                //If read operation is a write, then update it upon placing it to the back.
+                if(lru[i].rw == 'R' && temp.rw == 'W') {
+                    temp2.rw='W';
+                }
+                lru.erase(lru.begin()+i);
+                lru.push_back(temp2);
+                break;
+            }
+        }
             //memory access alredy in page table next read
             if(go_next)
                 continue;
@@ -212,7 +296,62 @@ void segmentedfifo(char* tracefile, int nframes, int percent, char* type){
         }
         //VMS is LRU
         else if(p_nframes == 0) {
-            //copy and paste LRU code but using the s_nframes variable as the size of LRU data structure
+            vector<memaccess> lru;
+            int events = 0;
+            int reads = 0;
+            int writes = 0;
+            bool debug = (strcmp(type,"debug") == 0);
+            
+            memaccess temp;
+            //read trace
+            while(fscanf(file,"%x %c",&temp.addr,&temp.rw) !=EOF) {
+                temp.addr /= 4096;
+                events++;
+                
+                //if debug mode print everytime something is read in
+                if(debug) {
+                    cout << "Memory access #" << events << " is " << temp.addr << temp.rw << ". " << endl;
+                }
+
+                bool go_next = false;
+                //search and update if new memory access exists in LRU
+                for(int i = 0; i<lru.size(); i++) {
+                    //memory access already exists in page table
+                    if(lru[i].addr == temp.addr) {
+                        go_next = true;
+                        //begin to place found page to back of page table.
+                        memaccess temp2=lru[i];
+                        //If read operation is a write, then update it upon placing it to the back.
+                        if(lru[i].rw == 'R' && temp.rw == 'W') {
+                            temp2.rw='W';
+                        }
+                        lru.erase(lru.begin()+i);
+                        lru.push_back(temp2);
+                        break;
+                    }
+                }
+
+                //memory access alredy in page table next read
+                if(go_next)
+                    continue;
+                else {
+                    //if page table has space available
+                    if(lru.size() < s_nframes) {
+                        lru.push_back(temp);
+                        reads++;
+                    }
+                    //if page table full
+                    else {
+                        //if popped memaccess is dirty
+                        if(lru.front().rw == 'W') {
+                            writes++;
+                        } 
+                        lru.erase(lru.begin());
+                        lru.push_back(temp);
+                        reads++;
+                    }
+                }
+            }
         }
         //default VMS
         else {
