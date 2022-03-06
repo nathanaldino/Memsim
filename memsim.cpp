@@ -76,21 +76,21 @@ void fifo(char* tracefile, int nframes, char* type) {
     bool debug = (strcmp(type,"debug") == 0);
 
     //open file
-    fstream file (tracefile);
-    if(!file.is_open()) {
+    FILE* file;
+    file = fopen(tracefile,"r");
+    if(file == NULL) {
         cout << "File not found!\n";
     }
     
+    memaccess temp;
     //read trace
-    while(!file.eof()) {
-        memaccess temp;
-        file >> temp.addr >> temp.rw;
+    while(fscanf(file,"%x %c",&temp.addr,&temp.rw) !=EOF) {
         temp.addr /= 4096;
         events++;
         
         //if debug mode print everytime something is read in
         if(debug) {
-            cout << "Memory access #" << events << " is " << temp.addr << temp.rw << ". ";
+            cout << "Memory access #" << events << " is " << temp.addr << temp.rw << ". " << endl;
         }
 
         bool go_next = false;
@@ -100,9 +100,10 @@ void fifo(char* tracefile, int nframes, char* type) {
             if(fifo[i].addr == temp.addr) {
                 go_next = true;
                 //if same memory access now needs to do a write operation instead of read
-                if(fifo[i].rw == 'r' && temp.rw == 'w') {
-                    fifo[i].rw = 'w';
+                if(fifo[i].rw == 'R' && temp.rw == 'W') {
+                    fifo[i].rw = 'W';
                 }
+                break;
             }
         }
 
@@ -117,16 +118,19 @@ void fifo(char* tracefile, int nframes, char* type) {
             }
             //if page table full
             else {
-            //if popped memaccess is dirty
-            if(fifo.front().rw == 'w')
-                writes++;
-            fifo.pop_front();
-            fifo.push_back(temp);
+                //if popped memaccess is dirty
+                if(fifo.front().rw == 'W') {
+                    writes++;
+                } 
+                fifo.pop_front();
+                fifo.push_back(temp);
+                reads++;
             }
         }
+
     }
     
-    file.close();
+    fclose(file);
     cout << "total memory frames: " << nframes << endl;
     cout << "events in trace: " << events << endl;
     cout << "total disk reads: " << reads << endl;
