@@ -6,6 +6,7 @@
 #include<cstring>
 #include<deque>
 #include<vector>
+#include<math.h>
 
 using namespace std;
 
@@ -24,6 +25,25 @@ void segmentedfifo(char* tracefile, int nframes, int percent, char* type);
 //helper functions
 
 int main(int argc, char* argv[]) {
+    
+    //GENERATE DATA ONLY
+    
+    //template insert any algorithm
+    /*
+    char* testfile = (char*)"sixpack.trace";
+    char* testtype = (char*)"quiet";
+    for(int j = 1; j<4; j++) {
+        for(int i = 1; i<11; i++) {
+            segmentedfifo(testfile, pow(2,i), j*25, testtype);
+            cout << endl;
+        }
+    }
+    return 1;
+    */
+    
+    //GENERATE DATA ONLY
+
+    string err = "Not enough/correct arguments. Please format as: ./memsim <tracefile> <nframes> <fifo|lru|vms> <p(only if vms)> <debug|quiet>";
     try {
         if(argc == 5 || argc == 6) {
             if(strcmp(argv[3],"fifo")==0) {
@@ -32,7 +52,7 @@ int main(int argc, char* argv[]) {
                     fifo(argv[1], nframes, argv[4]);
                 }
                 else
-                    throw;
+                    throw invalid_argument(err);
             }
             else if(strcmp(argv[3],"lru")==0) {
                 if(strcmp(argv[4],"debug")==0 || strcmp(argv[4],"quiet")==0) {
@@ -40,7 +60,7 @@ int main(int argc, char* argv[]) {
                     lru(argv[1], nframes, argv[4]);
                 }
                 else
-                    throw;
+                    throw invalid_argument(err);
             }
             else if(strcmp(argv[3],"vms")==0) {
                 int percent = atoi(argv[4]);
@@ -50,19 +70,20 @@ int main(int argc, char* argv[]) {
                         segmentedfifo(argv[1], nframes, percent, argv[5]);
                     }
                     else
-                        throw;
+                        throw invalid_argument(err);
                 }
                 else
-                    throw;
+                    throw invalid_argument(err);
             }
             else
-                throw;
+                throw invalid_argument(err);
         }
         else {
-            throw;
+            throw invalid_argument(err);
         }
-    } catch (exception& e) {
-        cout << "Not enough/correct arguments. Please format as: memsim <tracefile> <nframes> <fifo|lru|vms> <p(only if vms)> <debug|quiet> or " << endl << endl;
+    } 
+    catch (exception& e) {
+        cout << e.what() << endl << endl;
     }
 
     return 1;
