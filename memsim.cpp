@@ -7,6 +7,7 @@
 #include<deque>
 #include<vector>
 #include<math.h>
+#include<stdexcept>
 
 using namespace std;
 
